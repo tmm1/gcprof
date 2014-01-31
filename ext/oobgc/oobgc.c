@@ -104,7 +104,7 @@ gc_start_minor()
 }
 
 static VALUE
-oobgc(VALUE self)
+oobgc(VALUE self, int dry_run)
 {
   size_t curr = rb_gc_stat(sym_total_allocated_object);
   if (!_oobgc.installed) install();
@@ -130,8 +130,10 @@ oobgc(VALUE self)
     /* lazy sweep started sometime recently.
      * disable/enable the GC to force gc_rest_sweep() OOB
      */
-    if (rb_gc_disable() == Qfalse) rb_gc_enable();
-    _oobgc.stat.sweep++;
+    if (!dry_run) {
+      if (rb_gc_disable() == Qfalse) rb_gc_enable();
+      _oobgc.stat.sweep++;
+    }
     return Qtrue;
 
   } else if (_oobgc.allocation_limit) {
@@ -142,17 +144,33 @@ oobgc(VALUE self)
         rb_gc_stat(sym_remembered_shady_object) >= rb_gc_stat(sym_remembered_shady_object_limit)*0.97) &&
         curr >= _oobgc.allocation_limit - _oobgc.threshold.max*0.98) {
       /*fprintf(stderr, "oobgc MAJOR: %zu >= %zu - %zu\n", curr, _oobgc.allocation_limit, _oobgc.threshold.max);*/
-      gc_start_major();
+      if (!dry_run) {
+        gc_start_major();
+      }
       return Qtrue;
 
     } else if (curr >= _oobgc.allocation_limit - _oobgc.threshold.mean) {
       /*fprintf(stderr, "oobgc minor: %zu >= %zu - %zu\n", curr, _oobgc.allocation_limit, _oobgc.threshold.mean);*/
-      gc_start_minor();
+      if (!dry_run) {
+        gc_start_minor();
+      }
       return Qtrue;
     }
   }
 
   return Qfalse;
+}
+
+static VALUE
+oobgc_run(VALUE self)
+{
+  return oobgc(self, 0);
+}
+
+static VALUE
+oobgc_dry_run(VALUE self)
+{
+  return oobgc(self, 1);
 }
 
 static VALUE
@@ -187,7 +205,8 @@ Init_oobgc()
   rb_autoload(mOOB, rb_intern_const("UnicornMiddleware"), "gctools/oobgc/unicorn_middleware.rb");
 
   rb_define_singleton_method(mOOB, "setup", install, 0);
-  rb_define_singleton_method(mOOB, "run", oobgc, 0);
+  rb_define_singleton_method(mOOB, "run", oobgc_run, 0);
+  rb_define_singleton_method(mOOB, "dry_run", oobgc_dry_run, 0);
   rb_define_singleton_method(mOOB, "stat", oobgc_stat, 1);
   rb_define_singleton_method(mOOB, "clear", oobgc_clear, 0);
 
