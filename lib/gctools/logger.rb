@@ -56,10 +56,11 @@ proc{ |info, start, end_mark, end_sweep|
     tomb_slots = GC::INTERNAL_CONSTANTS[:HEAP_OBJ_LIMIT] * end_sweep[:heap_tomb_page_length]
     total_slots = eden_slots + tomb_slots
 
-    STDERR.printf "[%s in %1.3fs (% 13s)] % 8d slots = old (%4.1f%%) + remembered_shady (%4.1f%%) + shady (%4.1f%%) + infant (%4.1f%%) + empty (%4.1f%%) + tomb (%4.1f%%)\n",
+    STDERR.printf "[%s in %1.3fs (% 13s) #%d] % 8d slots = old (%4.1f%%) + remembered_shady (%4.1f%%) + shady (%4.1f%%) + infant (%4.1f%%) + empty (%4.1f%%) + tomb (%4.1f%%)\n",
       info[:major_by] ? 'MAJOR GC' : 'minor gc',
       end_mark[:time] - start[:time],
       info.values_at(:major_by, :gc_by).compact.join(","),
+      Process.pid,
       total_slots,
       oldgen_slots * 100.0 / total_slots,
       remembered_shady_slots * 100.0 / total_slots,
