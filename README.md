@@ -2,6 +2,8 @@
 
 gc profiler/logger and oobgc for rgengc in ruby 2.1
 
+oobgc is unnecessary in Ruby 2.2, since it includes an incremental GC (RIncGC) and will not pause the world for a long time.
+
 ### design
 
 built on new apis and events offered in ruby 2.1:
