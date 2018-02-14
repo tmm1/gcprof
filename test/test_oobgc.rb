@@ -14,9 +14,17 @@ class TestOOBGC < Minitest::Test
     GC.start(immediate_sweep: false)
     assert_equal false, GC.latest_gc_info(:immediate_sweep)
 
-    before = GC.stat(HEAP_SWEPT_SLOTS_KEY)
-    assert_equal true, GC::OOB.run
-    assert_operator GC.stat(HEAP_SWEPT_SLOTS_KEY), :>, before
+    # GC.latest_gc_info(:state) added in version 2.2.
+    if RUBY_VERSION < '2.2'
+      # GC.stat(:heap_swept_slots) removed in version 2.4.
+      before = GC.stat(HEAP_SWEPT_SLOTS_KEY)
+      assert_equal true, GC::OOB.run
+      assert_operator GC.stat(HEAP_SWEPT_SLOTS_KEY), :>, before
+    else
+      assert_equal :sweeping, GC.latest_gc_info(:state)
+      assert_equal true, GC::OOB.run
+      assert_equal :none, GC.latest_gc_info(:state)
+    end
   end
 
   def test_oob_mark
