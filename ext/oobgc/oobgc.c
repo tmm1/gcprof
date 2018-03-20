@@ -185,13 +185,13 @@ void
 Init_oobgc()
 {
   mOOB = rb_define_module_under(rb_mGC, "OOB");
-  rb_autoload(mOOB, rb_intern_const("UnicornMiddleware"), "gctools/oobgc/unicorn_middleware.rb");
 
   rb_define_singleton_method(mOOB, "setup", install, 0);
   rb_define_singleton_method(mOOB, "run", oobgc, 0);
   rb_define_singleton_method(mOOB, "stat", oobgc_stat, 1);
   rb_define_singleton_method(mOOB, "clear", oobgc_clear, 0);
 
+  // GC.stat hash keys renamed in version 2.1.
 #if (RUBY_API_VERSION_MAJOR == 2) && (RUBY_API_VERSION_MINOR == 1)
   #define S(name, legacy_name) sym_##name = ID2SYM(rb_intern(#legacy_name))
 #else
@@ -217,8 +217,19 @@ Init_oobgc()
 #undef S
 
   id_start = rb_intern("start");
+
+#if (RUBY_API_VERSION_MAJOR >= 2) && (RUBY_API_VERSION_MINOR >= 4)
+  // GC::INTERNAL_CONSTANTS[:HEAP_*] renamed to :HEAP_PAGE_*.
+  #define HEAP_OBJ_LIMIT "HEAP_PAGE_OBJ_LIMIT"
+  // GC.stat(:heap_swept_slots) removed.
+  // Use GC.stat(:heap_marked_slots) instead as a best approximation.
+  sym_heap_swept_slots = ID2SYM(rb_intern("heap_marked_slots"));
+#else
+  #define HEAP_OBJ_LIMIT "HEAP_OBJ_LIMIT"
+#endif
   _oobgc.heap_obj_limit =
-    NUM2SIZET(rb_hash_aref(rb_const_get(rb_mGC, rb_intern("INTERNAL_CONSTANTS")), ID2SYM(rb_intern("HEAP_OBJ_LIMIT"))));
+    NUM2SIZET(rb_hash_aref(rb_const_get(rb_mGC, rb_intern("INTERNAL_CONSTANTS")), ID2SYM(rb_intern(HEAP_OBJ_LIMIT))));
+#undef HEAP_OBJ_LIMIT
 
   minor_gc_args = rb_hash_new();
   rb_hash_aset(minor_gc_args, ID2SYM(rb_intern("full_mark")), Qfalse);
